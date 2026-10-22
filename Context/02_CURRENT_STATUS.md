@@ -54,7 +54,7 @@
    - Address Professor Feedback #2 by comparing model scaling (e.g. Qwen 0.5B vs 1.5B vs larger architectures) and discussing query length distribution impacts (e.g. conversational vs long context).
    - Reconcile the capped sweep (4.43% MAPE) with the uncapped diagnostic (9.14% MAPE) and present both transparently.
 4. **Draft and Typeset the 4-Page IEEE Phase 2 Report:**
-   - Must be strictly $\le 4$ pages in IEEE conference double-column format.
+   - **Completed:** Written and compiled `phase2_report.tex` and `phase2_report.pdf` (exactly 4 pages in IEEE conference format) meeting all course requirements and addressing professor feedback.
    - Target deadline: **27 October 2026**.
 
 ---
