@@ -1,0 +1,4 @@
+Project package includes:
+1. Full existing MS-Project repository.
+2. Latest IEEE double-column Phase-1 report replacing the old Phase1 PDF/TeX.
+3. NAME 3 GPU analysis artifacts and summary.

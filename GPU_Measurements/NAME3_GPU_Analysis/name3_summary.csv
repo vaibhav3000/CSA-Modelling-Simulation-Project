@@ -1,0 +1,8 @@
+metric,value
+geometric_KS_distance,0.3964959887729867
+corr_time_batch_size,0.7383786995405712
+corr_time_max_length,0.9492951263481688
+linear_B_latency_MAPE,15.25
+max_length_latency_MAPE,9.14
+linear_B_throughput_MAPE,17.6
+max_length_throughput_MAPE,10.75
