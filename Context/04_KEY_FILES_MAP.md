@@ -43,6 +43,13 @@ This guide provides a rapid reference to the exact physical locations of all cor
 ### GPU Hardware Traces (`GPU_Measurements/`)
 - `measurements.csv`: Raw execution times for batched inference on Nvidia Tesla T4 GPU.
 - `measurements_long.csv`: Extended GPU measurement traces.
+- `multi_model/`: Multi-model hardware sweeps across 4 model families on Tesla T4:
+  - `phi3/`: `sweep_phi3.csv` and `colab_sweep_phi3.py` (Microsoft Phi-3-mini-4k-instruct).
+  - `llama32_1b/`: `sweep_llama32_1b_final.csv` and `sweep.py` (Meta Llama-3.2-1B-Instruct).
+  - `gemma/`: `collab_gemma2_t4_final_results.csv` (Google Gemma-2-2B-it).
+  - `qwen15b/`: `measurements.csv` and `measurements_long.csv` (Qwen 2.5-1.5B-Instruct).
+- `notebooks/`:
+  - `sweep.ipynb` and `sweep.py`: GPU execution sweep drivers for cloud environments.
 - `NAME3_GPU_Analysis/`:
   - `name3_summary.csv`: Summary of linear-in-$B$ vs. max-sequence-length latency models.
   - `name3_heldout_validation.csv`: Prediction errors on held-out batch sizes $\{2, 8, 32\}$.
@@ -56,5 +63,5 @@ This guide provides a rapid reference to the exact physical locations of all cor
 - **Phase 1 Report:** `Phase1/phase1_final_report.pdf` (submitted version with all 4 member names).
 - **Phase 1 LaTeX:** `Phase1/phase1_final_report.tex` and bibliography `Phase1/phase1_refs.bib`.
 - **Phase 1 Feedback Image:** `Phase1/Phase1_Feedback.jpeg` (screenshot showing 3.5/5 score).
-- **Phase 2 Working Draft:** `Phase2/phase2_progress_report.tex` and `Phase2/phase2_progress_report.pdf`.
+- **Phase 2 Report:** `Phase2/phase2_report.tex` and `Phase2/phase2_report.pdf` (IEEE double-column, strictly 4 pages).
 - **Phase 3 Presentation:** `Phase3/phase3_presentation_beamer_v4.pdf`.

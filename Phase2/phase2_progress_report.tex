@@ -4,275 +4,348 @@
 \usepackage{microtype}
 \usepackage{booktabs}
 \usepackage{graphicx}
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,calc}
+\usepackage{xcolor}
+\usepackage{array}
 \usepackage[hidelinks]{hyperref}
 \usepackage{cite}
+
+% Compact float, list, and line spacing to guarantee strict 4-page IEEE fit in Overleaf
+\renewcommand{\baselinestretch}{0.925}
+\setlength{\textfloatsep}{2.5pt plus 1.0pt minus 1.0pt}
+\setlength{\floatsep}{3.5pt plus 1.0pt minus 1.0pt}
+\setlength{\dbltextfloatsep}{2.5pt plus 1.0pt minus 1.0pt}
+\setlength{\dblfloatsep}{3.5pt plus 1.0pt minus 1.0pt}
+\setlength{\abovecaptionskip}{2.0pt}
+\setlength{\belowcaptionskip}{0pt}
+\AtBeginDocument{%
+  \abovedisplayskip=4.0pt plus 1.0pt minus 2.0pt%
+  \belowdisplayskip=4.0pt plus 1.0pt minus 2.0pt%
+}
+
+% Helper macro to load project figures via relative path or local directory fallback
+\newcommand{\incplot}[3]{%
+  \IfFileExists{#1}{\includegraphics[width=#3]{#1}}{%
+    \IfFileExists{#2}{\includegraphics[width=#3]{#2}}{%
+      \fbox{\parbox[c][1.1in][c]{#3}{\centering\scriptsize\texttt{\detokenize{#2}}}}%
+    }%
+  }%
+}
 
 % Abstract styling for IEEE conference format
 \makeatletter
 \def\abstract{\normalfont
   \if@twocolumn
-    \@IEEEabskeysecsize\bfseries\textit{\abstractname}:\space\relax
+    \@IEEEabskeysecsize\bfseries\textit{\abstractname}---\relax
   \else
     \bgroup\par\addvspace{0.5\baselineskip}\centering\vspace{-1.78ex}\@IEEEabskeysecsize\textbf{\abstractname}\par\addvspace{0.5\baselineskip}\egroup\quotation\@IEEEabskeysecsize
   \fi\@IEEEgobbleleadPARNLSP}
 \makeatother
 
-\title{A Queueing-Network Simulator for an LLM Inference Serving Pipeline: Phase-2 Progress Report}
+\title{\vspace{-12pt}A Queueing-Network Simulator for an LLM Inference Serving Pipeline: Phase-2 Progress Report}
 
 \author{
   \IEEEauthorblockN{Vaibhav Mahore (23631)\IEEEauthorrefmark{1}, Sujal Chavda (24288)\IEEEauthorrefmark{1}, Arindam Raina (25880)\IEEEauthorrefmark{1}, Shreemaye Das (25958)\IEEEauthorrefmark{2}}
-  \IEEEauthorblockA{\IEEEauthorrefmark{1}Department of Computer Science and Automation, Indian Institute of Science, Bangalore}
-  \IEEEauthorblockA{\IEEEauthorrefmark{2}Department of Computational and Data Sciences, Indian Institute of Science, Bangalore}
-  \IEEEauthorblockA{Email: \{vaibhavm, sujals, arindamr, shreemayed\}@iisc.ac.in}
+  \IEEEauthorblockA{\IEEEauthorrefmark{1}Department of Computer Science and Automation (CSA), Indian Institute of Science, Bangalore, India}
+  \IEEEauthorblockA{\IEEEauthorrefmark{2}Department of Computational and Data Sciences (CDS), Indian Institute of Science, Bangalore, India}
+  \IEEEauthorblockA{Course: E0 240 (Modeling and Simulation) \quad Email: \{vaibhavm, sujals, arindamr, shreemayed\}@iisc.ac.in}
 }
 
 \begin{document}
-\maketitle
+\maketitle\vspace{-14pt}
 
 \begin{abstract}
-Large language model (LLM) serving stacks operate under strict real-time service level objectives (SLOs) while coping with bursty arrival traffic and variable generation lengths. In this project, our team builds a cycle-driven discrete-time queueing-network simulator that models the serving pipeline as an open three-station tandem chain consisting of a deterministic tokenizer ($Geo/D/1$), a dual-trigger batching scheduler (cap $B$, timeout $\tau$), and a multi-worker parallel GPU decode pool ($Geo/Geo/c$). We present a two-layer validation strategy. First, we analytically verify the simulation engine against discrete-time closed forms, achieving relative errors $<0.75\%$ across stable arrival rates $\lambda \le 0.45$ over $10^7$ cycles and confirming the theoretical factor-2 variance penalty within $0.94\%$. Second, directly addressing Phase-1 feedback, we ground our service scaling in empirical batched inference measurements collected on an Nvidia Tesla T4 GPU executing Qwen 2.5-1.5B across $B \in \{1, \dots, 32\}$. We fit a power-law calibration model on $B \in \{1, 4, 16\}$ that predicts execution latency on held-out batch sizes $\{2, 8, 32\}$ with a Mean Absolute Percentage Error (MAPE) of $4.43\%$. We also show that response sequence length drives decode time ($r = 0.9493$), reducing latency prediction error to $9.14\%$ compared to $15.25\%$ for linear batch models, and report scheduler trade-offs across batch capacities and worker allocations.
+Large language model (LLM) inference serving systems must satisfy strict Time-to-First-Token (TTFT) and Inter-Token Latency (ITL) Service Level Objectives (SLOs) under bursty arrivals and variable generation lengths. We design and implement a cycle-driven discrete-time queueing-network simulator that models the serving pipeline as an open three-station tandem network: a deterministic admission and tokenization server ($Q_1$: $Geo/D/1$, $S_1{=}2$), a dual-trigger First-Come First-Served (FCFS) batching scheduler ($Q_2$: cap $B$, timeout $\tau$), and a parallel multi-worker GPU decode pool ($Q_3$: $Geo/Geo/c$ or sublinear batch service $S_3(b)$). Directly addressing Phase-1 feedback, we establish a structural systems-to-queueing mapping that decomposes TTFT and ITL into station-level waiting delays ($W_{q,1}, W_{q,2}, W_{q,3}$) and service times. We then execute a two-layer validation and experimental study. In Layer~1, we verify our engine against discrete-time closed forms over $10^7$ cycles, achieving worst-case occupancy errors of $0.75\%$ ($Geo/D/1$, $S_1{=}2$), $0.46\%$ ($S_1{=}3$), and $0.94\%$ ($Geo/Geo/1$, $E[S]{=}2$), reproducing the Pollaczek-Khinchine factor-2 variance penalty within $0.31\%$ at $\lambda{=}0.45$ and network flow conservation within $3.4{\times}10^{-7}$. In Layer~2, we ground service scaling in batched inference sweeps across $B \in \{1, 2, 4, 8, 16, 32\}$ on an Nvidia Tesla T4 GPU across four model families (\texttt{Qwen2.5-1.5B}, \texttt{Gemma-2-2B}, \texttt{Llama-3.2-1B}, and \texttt{Phi-3-mini-4k}). Calibrating a power-law model on \texttt{Qwen2.5-1.5B} ($B \in \{1, 4, 16\}$) predicts held-out sizes $\{2, 8, 32\}$ with $4.43\%$ latency MAPE and $4.18\%$ throughput MAPE, while an uncapped 100-prompt diagnostic (512-token ceiling) reveals non-geometric output lengths ($KS{=}0.3965$) where straggler length $\max_{j \le B} L_j$ governs batch runtime ($r{=}0.9493$, cutting uncapped latency MAPE from $15.25\%$ to $9.14\%$). Finally, experiments E2 and E3 prove that $c{=}2$ parallel workers absorb an $80.2\%$ service-variability penalty at $\lambda{=}0.45$, while static batching ($\tau{=}8, B{\ge}8$) cuts GPU worker utilization by $48.9\%$ ($0.5999 \to 0.3063$).
 \end{abstract}
 
-\section{Problem Statement \& Motivation}
-Serving generative Large Language Models (LLMs) such as LLaMA and Qwen introduces unique systems challenges. Users expect rapid responsiveness characterized by two primary Service Level Objectives (SLOs): \emph{Time-to-First-Token} (TTFT), reflecting prompt processing and admission delays, and \emph{Inter-Token Latency} (ITL), reflecting token-by-token generation pace.
-
-\subsection{Why a Queueing-Network Abstraction?}
-In modern production serving systems (e.g., vLLM~\cite{kwon2023vllm}, Hugging Face TGI, and TensorRT-LLM), requests do not execute in isolation. Instead, incoming queries traverse a multi-stage software and hardware pipeline. User-visible latency is dominated not merely by raw matrix multiplications, but by \emph{queueing delays} accumulated across pipeline stages:
-\begin{equation}
-\text{TTFT} = W_{q,1} + S_1 + W_{q,2} + S_{\text{prefill}},
-\end{equation}
-\begin{equation}
-\text{ITL} \approx W_{q,3} + S_{\text{decode}},
-\end{equation}
-where $W_{q,i}$ represents queue waiting delay at stage $i$, $S_1$ is request tokenization and validation delay, $W_{q,2}$ is batch accumulation wait, and $W_{q,3}$ represents queue contention for available parallel GPU execution streams.
-
-Prior simulation frameworks, such as Vidur~\cite{agrawal2024vidur}, replay detailed GPU execution traces by profiling individual transformer tensor operators across full GPU clusters. While highly detailed, cluster trace profiling is computationally expensive, inflexible to architectural parameter changes, and opaque to theoretical stability limits. Conversely, abstracting the serving pipeline as an open queueing network offers distinct advantages:
-\begin{enumerate}
-    \item \textbf{Analytical Tractability:} It enables closed-form mathematical characterization of stability boundaries ($\rho < 1$) and queue buildups before physical deployment.
-    \item \textbf{Rapid Parameter Sweeps:} System architects can evaluate thousands of scheduler permutations (batch caps $B$, timeout thresholds $\tau$, worker counts $c$, and load levels $\lambda$) in seconds.
-    \item \textbf{Grounding in Hardware:} By calibrating queue service distributions against empirical GPU benchmarks, discrete-event simulation reproduces physical throughput-delay Pareto frontiers without requiring dedicated multi-GPU clusters.
-\end{enumerate}
-
-\begin{figure}[t]
+\begin{figure*}[!t]
 \centering
-\begin{tikzpicture}[>=Latex, font=\scriptsize, scale=0.82, transform shape,
-  stn/.style={draw, rounded corners=2pt, minimum width=2.3cm, minimum height=1.0cm, align=center, fill=gray!8}]
-\node[stn] (q1) {\textbf{Q1: Tokenizer}\\ $Geo/D/1$, $S_1=2$\\ Fixed Admission};
-\node[stn,right=0.55cm of q1] (q2) {\textbf{Q2: Batcher}\\ FCFS Buffer\\ Cap $B$ or Timer $\tau$};
-\node[stn,right=0.55cm of q2] (q3) {\textbf{Q3: GPU Workers}\\ $Geo/Geo/c$ Pool\\ $c$ Parallel Slots};
-\draw[->, thick] ($(q1.west)+(-0.7,0)$) -- node[above]{$\lambda$} (q1.west);
-\draw[->, thick] (q1) -- node[above]{$\lambda_1$} (q2);
-\draw[->, thick] (q2) -- node[above]{$\le B$} (q3);
-\draw[->, thick] (q3.east) -- ++(0.7,0) node[right]{Done};
-\end{tikzpicture}
-\caption{The three-station queueing-network model of the LLM serving pipeline.}
-\label{fig:network_model}
-\vspace{-0.3cm}
-\end{figure}
+\incplot{fig_arch_mapping.pdf}{figures/fig_arch_mapping.pdf}{0.76\textwidth}
+\vspace{-4pt}
+\caption{Structural mapping from a physical LLM serving stack (amber strips) to our three-station discrete-time queueing network (blue bodies), addressing Phase-1 Feedback~\#1. Squares are requests, rounded boxes are batches and circles are servers. The bar splits a request's delay into queueing waits $W_{q,i}$ and service times (not to scale) and shows how TTFT, ITL and end-to-end sojourn ($W_{\text{soj}}$) are composed.}
+\label{fig:arch_mapping}
+\vspace{-6pt}
+\end{figure*}
+
+\section{Problem Statement and Motivation}
+Serving generative Large Language Models (LLMs) such as LLaMA and Qwen in interactive applications requires satisfying strict latency Service Level Objectives (SLOs) under stochastic request arrivals~\cite{kwon2023vllm,agrawal2024vidur}: \emph{Time-to-First-Token} (TTFT), measuring initial responsiveness, and \emph{Inter-Token Latency} (ITL), measuring token generation speed.
+
+\subsection{Why Model LLM Serving as a Queueing Network? (Addressing Phase-1 Feedback \#1)}
+A central question raised in our Phase-1 evaluation is: \emph{why should an LLM inference pipeline be modeled as a network of queues rather than analyzed as a single compute kernel or evaluated solely through full-system profiling?} We establish three foundational justifications, illustrated in Fig.~\ref{fig:arch_mapping}:
+
+\textbf{1) Physical Decoupling of Asynchronous Resource Stages.}
+In production serving stacks (vLLM~\cite{kwon2023vllm}, Hugging Face TGI, TensorRT-LLM), requests traverse three decoupled stages governed by distinct queueing mechanics:
+\begin{itemize}\setlength{\itemsep}{0pt}\setlength{\topsep}{1pt}
+  \item \emph{CPU Admission \& Tokenization ($Q_1$):} An asynchronous front-end parses HTTP/gRPC payloads and executes Byte-Pair Encoding (BPE) tokenization on the CPU. Because tokenization takes a small, deterministic slice ($0.206\text{ ms}$ mean in our T4 host trials) decoupled from GPU contention, it forms a single-server deterministic queue ($Geo/D/1$).
+  \item \emph{Scheduler Batch Accumulation ($Q_2$):} Autoregressive decoding is memory-bandwidth bound on GPU High-Bandwidth Memory (HBM); serving $B{=}1$ wastes compute capacity. The scheduler therefore buffers tokenized requests in an FCFS queue until $B$ requests accumulate or a latency timer $\tau$ expires~\cite{yu2022orca}, introducing an explicit \emph{batch-aggregation delay} $W_{q,2}$.
+  \item \emph{Parallel GPU Execution Contention ($Q_3$):} Formed batches are dispatched to $c$ parallel GPU execution streams. Because output token lengths vary widely across prompts ($83\text{--}487$ tokens in our uncapped diagnostic), active batches occupy workers for stochastic durations, subjecting arriving batches to \emph{worker contention delay} $W_{q,3}$.
+\end{itemize}
+
+\textbf{2) Exact Additive Decomposition of User-Perceived Latency.}
+End-to-end request sojourn time $W_{\text{soj}}$ decomposes additively across all three stations:
+\begin{equation}
+W_{\text{soj}} = \underbrace{W_{q,1} + W_{q,2} + W_{q,3}}_{W_{\text{e2e,qwait}}\text{ (Queueing Delay)}} + \underbrace{S_1 + S_3(b, L_{\max})}_{\text{Service Duration}}.
+\label{eq:sojourn_decomp}
+\end{equation}
+As load approaches capacity ($\rho_i \to 1$), queueing delay $W_{\text{e2e,qwait}}$ dominates hardware compute time by over $15\times$ (growing from $0.057$ cycles at $\lambda{=}0.05$ to $65.15$ cycles at $\lambda{=}0.49$ in Experiment~E2). A multi-station network isolates whether tail latency stems from admission bottlenecks ($Q_1$), overly patient batching timers ($\tau$ at $Q_2$), or decode-length variance amplification ($Q_3$).
+
+\textbf{3) Analytical Tractability and Speed vs.\ Operator Profiling.}
+Trace-driven simulators like Vidur~\cite{agrawal2024vidur} profile thousands of tensor operators across GPU clusters, requiring costly hardware access and offering no closed-form insight into stability limits. Our discrete-time queueing simulator evaluates $10^7$ cycles in $\approx 6.5\text{ s}$ on a single CPU core, sweeping $(\lambda, B, \tau, c)$ analytically and numerically while grounding service laws in real Tesla T4 GPU measurements.
 
 \section{Related Work}
-\textbf{LLM Serving Systems.} Orca~\cite{yu2022orca} introduced iteration-level scheduling (continuous batching), allowing requests to enter and leave running batches at token step boundaries. vLLM~\cite{kwon2023vllm} developed PagedAttention to eliminate memory fragmentation in key-value (KV) caches, supporting large effective batch sizes. FlexGen~\cite{sheng2023flexgen} explored throughput-oriented single-GPU inference by aggressive offloading across memory hierarchies. These systems demonstrate that batching policies and memory capacity dictate overall system throughput and response latency.
+\textbf{LLM Serving Systems.} Orca~\cite{yu2022orca} pioneered iteration-level (continuous) scheduling to retire completed sequences at token boundaries. vLLM~\cite{kwon2023vllm} introduced PagedAttention to eliminate KV-cache fragmentation, unlocking larger batch caps $B$. FlexGen~\cite{sheng2023flexgen} maximized single-GPU offline throughput via CPU/disk offloading. While these systems engineer runtime mechanisms, our work formulates a verifiable queueing model of their batching and worker-pool trade-offs.
 
-\textbf{Serving Simulators.} Vidur~\cite{agrawal2024vidur} evaluates cluster-scale serving performance using operator-level execution models. However, Vidur relies on pre-collected operator profiles and does not provide analytical closed forms for queue wait or stability. Our work is complementary: we model the serving chain with discrete-time queueing theory, verifying baseline nodes against closed forms~\cite{mor2006discrete} and grounding service scaling in empirical GPU data.
+\textbf{Simulators and Queueing Theory.} Vidur~\cite{agrawal2024vidur} predicts cluster scheduling latency via machine-learned operator tables but lacks closed-form queueing verification. Following E0~240's discrete-time modeling principles~\cite{mor2006discrete}, we verify our baseline nodes against exact $Geo/D/1$ and $Geo/Geo/1$ closed forms and calibrate $Q_3$ using empirical Tesla T4 traces~\cite{zheng2023response}.
 
-\section{Methodology \& Simulator Architecture}
+\section{Methodology and Simulator Architecture}
 
-\subsection{Queueing-Network Abstraction}
-As illustrated in Fig.~\ref{fig:network_model}, we model the pipeline as an open feedforward queueing network with three stations in tandem. External requests arrive following a discrete-time Bernoulli process: in each discrete cycle (representing one scheduler tick, typically 10--50 ms in physical systems), a new request arrives with probability $\lambda \in (0, 0.5)$.
-
-\textbf{Station 1 ($Q_1$): Admission \& Tokenization.} Modeled as a single-server $Geo/D/1$ queue with deterministic service duration $S_1 = 2$ cycles per request ($\mu_1 = 1/S_1 = 0.5$). $Q_1$ captures input parsing, formatting, and prompt tokenization.
-
-\textbf{Station 2 ($Q_2$): Batching Scheduler.} Modeled as a First-Come First-Served (FCFS) aggregation buffer with dual release conditions:
-\begin{enumerate}
-    \item \emph{Batch Capacity ($B$):} Requests are immediately dispatched when $B$ requests accumulate.
-    \item \emph{Timeout Threshold ($\tau$):} If fewer than $B$ requests are present, but the head-of-line request has waited $\tau$ clock cycles, all currently queued requests are released as a partial batch.
-\end{enumerate}
-With $B=1$ or $\tau=0$, $Q_2$ acts as a zero-delay pass-through buffer used for analytical baseline verification.
-
-\textbf{Station 3 ($Q_3$): GPU Decode Workers.} Modeled as a multi-server pool of $c$ identical parallel workers. Each worker serves one batch synchronously. The base decode duration follows a geometric distribution with mean $E[S_3]$ ($Geo/Geo/c$, completion probability $p_s = 1/E[S_3]$) or a deterministic batch duration calibrated by hardware measurements.
-
-\textbf{Stability Criteria.} Requests are conserved along the feedforward path ($\lambda_1 = \lambda_2 = \lambda_3 = \lambda$). The binding stability conditions are:
+\subsection{Three-Station Tandem Queueing Formulation}
+Time advances in discrete cycles $t \in \{1, \dots, T\}$. External arrivals follow a Bernoulli process with rate $\lambda \in (0, 0.5)$ requests/cycle.
+\textbf{Station 1 ($Q_1$):} Single-server FIFO $Geo/D/1$ queue with deterministic service $S_1 = 2$ cycles ($\mu_1 = 0.5$; $S_1 = 3$ also verified), using the course's same-cycle immediate-access convention (\texttt{single\_queue\_simulation\_geo\_d\_1.m}).
+\textbf{Station 2 ($Q_2$):} FCFS batch buffer holding $q_2(t)$ requests with head-of-line arrival cycle $t_{\text{head}}$. At cycle $t$, $Q_2$ releases a batch of size $b$ to $Q_3$ when either trigger fires:
 \begin{equation}
-\rho_1 = \lambda S_1 = 2\lambda < 1 \implies \lambda < 0.5,
+q_2(t) \ge B \implies b = B, \quad \text{or} \quad t - t_{\text{head}} \ge \tau \implies b = q_2(t) < B.
 \end{equation}
+With $B{=}1$ or $\tau{=}0$, $Q_2$ is a zero-delay pass-through ($W_{q,2}{=}0$).
+\textbf{Station 3 ($Q_3$):} Pool of $c$ homogeneous parallel workers, each serving one entire batch synchronously (all requests in the batch share the batch service duration) under either: (i)~a \emph{deterministic sublinear law} $S_3(b) = \lceil S_{\text{base}} + \delta(b - 1) \rceil$ ($S_{\text{base}}{=}2$), or (ii)~a \emph{geometric law} with completion probability $p_s(b) = 1/(S_{\text{base}} + \delta(b - 1))$ and mean $E[S_3(b)] = 1/p_s(b)$.
+
+\textbf{Stability Criteria.} Because requests are conserved along the path ($\lambda_1 = \lambda_2 = \lambda_3 = \lambda$), the binding stability conditions are:
 \begin{equation}
-\rho_3 = \frac{\lambda E[S_3]}{c \cdot \bar{b}} < 1,
+\rho_1 = \lambda S_1 = 2\lambda < 1 \implies \lambda < 0.50, \qquad \rho_3 = \frac{\lambda E[S_3]}{c} < 1,
 \end{equation}
-where $\bar{b} \in [1, B]$ is the mean batch size. $Q_2$ has no internal service bottleneck and is stable whenever $Q_3$ is stable.
+where batch service duration $S_3(b)$ depends on the realized batch size $b$, and $Q_2$ is stable whenever $Q_3$ is stable.
 
-\subsection{Cycle-Driven Simulation Engine}
-The simulator is implemented in Python as a cycle-driven discrete-event loop:
-\begin{enumerate}
-    \item \textbf{Clock Advance:} Time advances in uniform increments of one integer cycle.
-    \item \textbf{Arrival Step:} External arrivals are generated via inverse transform sampling ($U \le \lambda$ where $U \sim \text{Uniform}[0, 1)$).
-    \item \textbf{Service \& Departure Step:} Active servers decrement service countdowns or evaluate geometric completion draws ($U < p_s$). Completed requests/batches depart to the downstream station or exit the system.
-    \item \textbf{Batching \& Dispatch Step:} $Q_2$ evaluates batch capacity $B$ and timer $\tau$, releasing eligible batches to idle $Q_3$ worker slots.
-    \item \textbf{Statistical Accounting:} Occupancy counters $\sum Q_i(t)$, wait times $\sum D_i$, and busy-server tracking counters are updated per cycle.
-\end{enumerate}
-The random seed is fixed (`20260922`), guaranteeing full reproducibility across all experimental runs.
+\subsection{Cycle-Driven Engine and Common Random Numbers (CRN)}
+In each cycle $t$, \texttt{network\_sim.py} executes four steps in exact class-code order: (1)~decrement deterministic countdowns or draw geometric completions via Inverse Transform sampling ($U \le p_s$); (2)~route completed jobs downstream ($Q_1 \to Q_2 \to Q_3 \to \text{Exit}$); (3)~check $Q_2$ release triggers and dispatch queued jobs to idle workers; and (4)~accumulate post-dispatch queue lengths $Q_i(t)$ (excluding in-service requests) and busy worker counts $B_i(t)$. Time-average occupancy $L_{q,i} = \frac{1}{T}\sum_{t=1}^T Q_i(t)$, mean queue wait $W_{q,i} = \frac{1}{N_i}\sum_{k=1}^{N_i} D_{i,k}$, and utilization $\hat{\rho}_i = \frac{1}{Tc_i}\sum_{t=1}^T B_i(t)$ use fixed seed \texttt{20260922}. Multi-config sweeps (E2, E3) use \emph{Common Random Numbers (CRN)} so all compared configurations share identical arrival streams.
 
-\begin{table}[t]
+\begin{table}[!t]
 \centering
-\caption{Layer-1 Analytical Validation Results ($10^7$ Cycles)}
+\caption{Layer-1 Analytical \& Network Accounting Verification ($10^7$ Cycles, Seed \texttt{20260922})}
 \label{tab:validation}
-\vspace{-0.1cm}
-\scriptsize
-\setlength{\tabcolsep}{2.5pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{@{}llrrr@{}}
 \toprule
-\textbf{Node \& Configuration} & \textbf{Metric} & \textbf{Analytical} & \textbf{Simulated} & \textbf{Rel. Error} \\
+\textbf{Validation Check \& Configuration} & \textbf{Metric / Relation} & \textbf{Analytical} & \textbf{Simulated} & \textbf{Rel.\ Error} \\
 \midrule
-$Geo/D/1$, $S_1{=}2$, $\lambda{=}0.45$ & $L_q$ & 2.0250 & 2.0324 & 0.37\% \\
-$Geo/D/1$, $S_1{=}2$, $\lambda{=}0.30$ & $W_q$ & 0.7500 & 0.7530 & 0.41\% \\
-$Geo/D/1$, $S_1{=}3$, $\lambda{=}0.30$ & $L_q$ & 2.7000 & 2.7118 & 0.44\% \\
-$Geo/Geo/1$, $E[S]{=}2$, $\lambda{=}0.45$ & $L_q$ & 4.0500 & 4.0775 & 0.68\% \\
-Variance Penalty ($\lambda{=}0.45$) & Ratio & 2.0000 & 2.0062 & 0.31\% \\
-Pipeline $Q_1$ Util ($\lambda{=}0.30$) & $\rho_1$ & 0.6000 & 0.5997 & 0.06\% \\
-Flow Conservation ($\lambda{=}0.45$) & Ratio & 1.0000 & 0.999999 & $<10^{-5}$ \\
-Little's Law Check & $W \lambda / L_q$ & 1.0000 & 1.000000 & $<10^{-6}$ \\
+\multicolumn{5}{@{}l}{\textit{V1: Single-Station Deterministic Service ($Geo/D/1$)}} \\
+$S_1{=}2$, $\lambda{=}0.30$ ($\rho{=}0.60$) & $L_q = \lambda^2/(1{-}2\lambda)$ & 0.2250 & 0.2260 & 0.46\% \\
+$S_1{=}2$, $\lambda{=}0.30$ ($\rho{=}0.60$) & $W_q = \rho(S{-}1)/(2(1{-}\rho))$ & 0.7500 & 0.7530 & 0.41\% \\
+$S_1{=}2$, $\lambda{=}0.45$ ($\rho{=}0.90$) & $L_q = \lambda^2/(1{-}2\lambda)$ & 2.0250 & 2.0324 & 0.37\% \\
+$S_1{=}2$, worst stable ($\lambda{=}0.35$) & $\max_{\lambda \le 0.45} |L_q - \hat{L}_q|/L_q$ & 0.4083 & 0.4053 & 0.75\% \\
+$S_1{=}3$, $\lambda{=}0.30$ ($\rho{=}0.90$) & $L_q = \lambda W_q$ ($S$-general) & 2.7000 & 2.7118 & 0.44\% \\
+$S_1{=}3$, $\lambda{=}0.30$ ($\rho{=}0.90$) & $W_q = \rho(S{-}1)/(2(1{-}\rho))$ & 9.0000 & 9.0416 & 0.46\% \\
+$S_1{=}3$, ratio vs.\ $S{=}2$-only form & $\hat{L}_q / [\lambda^2(S{-}1)/(1{-}\lambda S)]$ & 1.5000 & 1.5066 & 0.44\% \\
+\midrule
+\multicolumn{5}{@{}l}{\textit{V2: Single-Station Geometric Service ($Geo/Geo/1$, $E[S]{=}2$) \& Factor-2 Law}} \\
+$E[S]{=}2$, $\lambda{=}0.30$ ($\rho{=}0.60$) & $L_q = 2\lambda^2/(1{-}2\lambda)$ & 0.4500 & 0.4505 & 0.11\% \\
+$E[S]{=}2$, $\lambda{=}0.45$ ($\rho{=}0.90$) & $L_q = 2\lambda^2/(1{-}2\lambda)$ & 4.0500 & 4.0775 & 0.68\% \\
+$E[S]{=}2$, worst stable ($\lambda{=}0.10$) & $\max_{\lambda \le 0.45} |L_q - \hat{L}_q|/L_q$ & 0.0250 & 0.0248 & 0.94\% \\
+Factor-2 ratio ($\lambda{=}0.45$) & $\hat{L}_q^{\text{Geo}} / \hat{L}_q^{\text{D}}$ & 2.0000 & 2.0062 & 0.31\% \\
+Factor-2 sweep ($\lambda \in [0.05, 0.45]$) & Range of $\hat{L}_q^{\text{Geo}} / \hat{L}_q^{\text{D}}$ & 2.0000 & $1.984\text{--}2.019$ & $\le 0.95\%$ \\
+\midrule
+\multicolumn{5}{@{}l}{\textit{V3: Full 3-Station Pipeline Accounting ($B{=}1, \tau{=}0, c{=}1$, $\lambda{=}0.30$)}} \\
+Flow conservation ($Q_1, Q_2, Q_3$) & $\text{Departures} / \text{Arrivals}$ & 1.0000 & 0.9999997 & $3.3{\times}10^{-7}$ \\
+Station utilizations ($\hat{\rho}_1, \hat{\rho}_3$) & $\rho_i = \lambda_i E[S_i]$ & 0.6000 & 0.5997 / 0.5999 & $\le 0.06\%$ \\
+Per-node $W = L_q / \lambda$ relation & $\hat{W}_{q,i} / (\hat{L}_{q,i}/\hat{\lambda}_i)$ & 1.0000 & 1.0000000 & $1.5{\times}10^{-16}$ \\
+Network total occupancy & $\hat{L}_{\text{tot}} / (\hat{\lambda} \hat{W}_{\text{e2e,qwait}})$ & 0.5591 & 0.5590868 & $3.3{\times}10^{-7}$ \\
 \bottomrule
-\end{tabular}
-\vspace{-0.2cm}
+\end{tabular}%
+}
+\vspace{-2pt}
 \end{table}
+
+\begin{figure}[!t]
+\centering
+\begin{minipage}[t]{0.48\linewidth}
+\centering
+\incplot{../Project_Simulator/figures/fig_e1_validation_geo_d_1.pdf}{fig_e1_validation_geo_d_1.pdf}{\linewidth}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\linewidth}
+\centering
+\incplot{../Project_Simulator/figures/fig_v2_factor2.pdf}{fig_v2_factor2.pdf}{\linewidth}
+\end{minipage}
+\vspace{-2pt}
+\caption{Layer-1 verification. \emph{Left (V1):} $Geo/D/1$ ($S_1{=}2$) queue occupancy across horizons $T \in \{10^3, 10^5, 10^7\}$ cycles, converging onto $L_q = \lambda^2/(1{-}2\lambda)$ ($0.46\%$ error at $\lambda{=}0.30, 10^7$ cycles). \emph{Right (V2):} $Geo/Geo/1$ vs.\ $Geo/D/1$ at $10^7$ cycles, confirming the exact $2\times$ Pollaczek-Khinchine variance penalty.}
+\label{fig:layer1_val}
+\vspace{-3pt}
+\end{figure}
 
 \section{Layer-1 Analytical Verification}
-To establish ground truth for the simulation core, we verify single-station performance against discrete-time closed forms over $10^7$ cycles across arrival rates $\lambda \in [0.05, 0.45]$.
+We verify single-station and pipeline behavior across $\lambda \in \{0.05, \dots, 0.45, 0.49\}$ and $T \in \{10^3, 10^5, 10^7\}$ cycles. Additionally, \texttt{check\_conventions.py} confirms bit-exact integer counter equivalence with the course's \texttt{single\_queue\_simulation\_geo\_d\_1.m} across four $(S, \lambda, T)$ test cases.
 
-\textbf{Deterministic Service ($Geo/D/1$).} For slotted service $S$, discrete-time queueing theory establishes:
+\textbf{Deterministic Service ($Geo/D/1$) \& $S$-General Formula.}
+From the waiting-time PGF $G_W(z) = (1 - \lambda S)/[1 - \lambda(1 + z + \dots + z^{S-1})]$, the exact $S$-general closed-form pair (\texttt{top\_script.m}) is:
 \begin{equation}
-W_q = \frac{\rho(S - 1)}{2(1 - \rho)}, \quad L_q = \lambda W_q = \frac{\lambda^2 S (S - 1)}{2(1 - \lambda S)}.
+W_q = \frac{\rho(S - 1)}{2(1 - \rho)}, \qquad L_q = \lambda W_q = \frac{\lambda^2 S(S - 1)}{2(1 - \lambda S)}.
+\label{eq:geod1_general}
 \end{equation}
-For $S_1 = 2$, this simplifies to $L_q = \lambda^2 / (1 - 2\lambda)$. As shown in Table~\ref{tab:validation}, simulated occupancy tracks the theoretical curve within $0.37\%$ relative error at $\lambda = 0.45$. Across the entire stable sweep $\lambda \in [0.05, 0.45]$, the maximum observed error is $0.75\%$ for $S=2$ and $0.46\%$ for $S=3$.
+During verification we proved that the Assignment-1 formula $L_q^{\text{A1}} = \lambda^2(S - 1)/(1 - \lambda S)$ matches our post-dispatch convention \emph{only} at $S{=}2$ ($S/2{=}1 \implies L_q = \lambda^2/(1 - 2\lambda)$), whereas at $S{=}3$ the exact occupancy is $S/2 = 1.5\times$ larger. Table~\ref{tab:validation} and Fig.~\ref{fig:layer1_val} (left) show that at $10^7$ cycles, our simulator matches Eq.~(\ref{eq:geod1_general}) within $0.75\%$ across $\lambda \le 0.45$ for $S_1{=}2$ and within $0.46\%$ for $S_1{=}3$ ($\lambda \le 0.30$, confirming the $1.5066\times$ ratio). At $\lambda{=}0.30$, $L_q$ relative error converges from $7.56\%$ ($10^3$ cycles) to $1.83\%$ ($10^5$) and $0.46\%$ ($10^7$).
 
-\textbf{Geometric Service ($Geo/Geo/1$).} For geometric service with mean $E[S] = 2$, theoretical queue occupancy is $L_q = 2\lambda^2 / (1 - 2\lambda)$. The simulated ratio of $Geo/Geo/1$ to $Geo/D/1$ occupancy converges to $2.0062$ at $\lambda = 0.45$ ($0.31\%$ error), verifying the exact factor-of-2 variance penalty dictated by the Pollaczek-Khinchine formula.
+\textbf{Geometric Service ($Geo/Geo/1$) \& V3 Accounting.}
+For geometric service with $E[S]{=}2$ ($\text{Var}(S){=}2$), discrete-time Pollaczek-Khinchine gives $L_q^{\text{Geo}} = 2\lambda^2/(1 - 2\lambda) = 2L_q^{\text{D}}$. Table~\ref{tab:validation} and Fig.~\ref{fig:layer1_val} (right) confirm agreement within $0.94\%$ across $\lambda \le 0.45$ and an empirical ratio $\hat{L}_q^{\text{Geo}}/\hat{L}_q^{\text{D}} \in [1.9835, 2.0190]$ ($0.31\%$ error at $\lambda{=}0.45$). All 87 stable checks in \texttt{validation\_table.csv} pass with zero failures.
 
-\textbf{Internal Consistency.} We verify network-level accounting: departure-to-arrival ratios remain within $3.4 \times 10^{-7}$ of unity, measured server utilization matches $\rho_i = \lambda_i E[S_i]$ within $0.11\%$, and Little's Law ($W = L_q / \lambda$) holds to machine precision.
-
-\section{Layer-2 Empirical GPU Analysis \& Results}
-To address Phase-1 feedback regarding experimental strength, model diversity, and empirical grounding, we conducted physical GPU profiling benchmarks and multi-parameter simulator sweeps.
-
-\begin{table}[t]
+\begin{table}[!t]
 \centering
-\caption{Held-Out GPU Batch Execution Validation (Tesla T4)}
-\label{tab:gpu_heldout}
-\vspace{-0.1cm}
-\scriptsize
-\setlength{\tabcolsep}{2.2pt}
-\begin{tabular}{@{}rrrrrr@{}}
+\caption{Layer-2 Empirical Tesla T4 GPU Validation, Uncapped Predictor Comparison \& Multi-Model Batch-Scaling Sweeps}
+\label{tab:gpu_empirical}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lrrrrrr@{}}
 \toprule
-\textbf{Batch} & \textbf{Measured} & \textbf{Predicted} & \textbf{Latency} & \textbf{Measured} & \textbf{Throughput} \\
-\textbf{Size $B$} & \textbf{Time (s)} & \textbf{Time (s)} & \textbf{Error} & \textbf{Req/s} & \textbf{Error} \\
+\multicolumn{7}{@{}l}{\textbf{Part A: Split Calibration ($B \in \{1,4,16\}$) \& Held-Out Validation ($B \in \{2,8,32\}$), 96-Token Cap}} \\
+\textbf{Batch} & \textbf{Split} & \textbf{Colab} & \textbf{Kaggle} & \textbf{Power-Law} & \textbf{Latency} & \textbf{Measured / Pred.} \\
+\textbf{Size $B$} & \textbf{Role} & \textbf{Mean (s)} & \textbf{Mean (s)} & \textbf{Pred.\ (s)} & \textbf{Error} & \textbf{Req/s (Error)} \\
 \midrule
-2 & 3.795 & 4.033 & +6.26\% & 0.527 & -5.89\% \\
-8 & 3.800 & 4.039 & +6.29\% & 2.105 & -5.92\% \\
-32 & 4.015 & 4.045 & +0.74\% & 7.970 & -0.74\% \\
+1 & Calib. & $3.868 \pm 0.29$ & 4.069 & 4.030 & --- & 0.259 / 0.248 (---) \\
+4 & Calib. & $4.382 \pm 2.21$ & 3.826 & 4.036 & --- & 0.913 / 0.991 (---) \\
+16 & Calib. & $3.879 \pm 0.29$ & 3.980 & 4.042 & --- & 4.125 / 3.959 (---) \\
+\textbf{2} & \textbf{Held-Out} & $\mathbf{3.795 \pm 0.28}$ & \textbf{3.869} & \textbf{4.033} & \textbf{+6.26\%} & \textbf{0.527 / 0.496 (-5.89\%)} \\
+\textbf{8} & \textbf{Held-Out} & $\mathbf{3.800 \pm 0.28}$ & \textbf{3.865} & \textbf{4.039} & \textbf{+6.29\%} & \textbf{2.105 / 1.981 (-5.92\%)} \\
+\textbf{32} & \textbf{Held-Out} & $\mathbf{4.015 \pm 0.30}$ & \textbf{4.088} & \textbf{4.045} & \textbf{+0.74\%} & \textbf{7.970 / 7.912 (-0.74\%)} \\
+\multicolumn{5}{@{}l}{\textbf{Held-Out Mean Absolute Percentage Error (MAPE):}} & \textbf{4.43\%} & \textbf{Throughput: 4.18\%} \\
 \midrule
-\multicolumn{3}{l}{\textbf{Overall Mean Absolute Percentage Error (MAPE):}} & \textbf{4.43\%} & & \textbf{4.18\%} \\
+\multicolumn{7}{@{}l}{\textbf{Part B: Uncapped 512-Token Structural Sweep (30 Trials, $L_j \in [87, 498]$ Tokens)}} \\
+\multicolumn{2}{@{}l}{\textbf{Predictor Model}} & \multicolumn{2}{r}{\textbf{Feature Correlation $r$}} & \multicolumn{2}{r}{\textbf{Held-Out Latency MAPE}} & \textbf{Throughput MAPE} \\
+\midrule
+\multicolumn{2}{@{}l}{Linear-in-$B$: $\hat{T}(B) = \beta_0 + \beta_1 B$} & \multicolumn{2}{r}{$r(T, B) = 0.7384$} & \multicolumn{2}{r}{$15.25\%$} & $17.60\%$ \\
+\multicolumn{2}{@{}l}{\textbf{Max-Length: $\hat{T}(L_{\max}) = \gamma_0 + \gamma_1 \max_j L_j$}} & \multicolumn{2}{r}{$\mathbf{r(T, L_{\max}) = 0.9493}$} & \multicolumn{2}{r}{$\mathbf{9.14\%}$} & $\mathbf{10.75\%}$ \\
+\midrule
+\multicolumn{7}{@{}l}{\textbf{Part C: Multi-Model Measured T4 Sweeps (Short-QA, $B \in \{1, \dots, 32\}$), Four Model Families}} \\
+\multicolumn{2}{@{}l}{\textbf{Model (Trials per $B$)}} & \textbf{FP16 Wt.\ / Peak} & \textbf{KV Cache} & \textbf{Batch Time (s)} & \textbf{Req/s (Gain)} & \textbf{Scaling} \\
+\multicolumn{2}{@{}l}{} & \textbf{GB ($B{=}32$)} & \textbf{per Token} & $\mathbf{B{=}1 \to 32}$ & $\mathbf{B{=}1 \to 32}$ & \textbf{Exponent $\alpha$} \\
+\midrule
+\multicolumn{7}{@{}l}{\textit{96-token cap (controlled hardware benchmark)}} \\
+\multicolumn{2}{@{}l}{\texttt{Qwen2.5-1.5B} (10)} & 3.0 / --- & 28 KB & $3.87 \to 4.02$ & $0.26 \to 7.97$ ($31\times$) & 0.001 \\
+\multicolumn{2}{@{}l}{\texttt{Gemma-2-2B-it} (6)} & 5.2 / 5.7 & 104 KB & $4.79 \to 5.07$ & $0.21 \to 6.31$ ($30\times$) & 0.012 \\
+\multicolumn{2}{@{}l}{\texttt{Llama-3.2-1B-Inst.} (10)} & 2.5 / 2.7 & 32 KB & $2.63 \to 2.87$ & $0.38 \to 11.14$ ($29\times$) & 0.022 \\
+\multicolumn{7}{@{}l}{\textit{512-token ceiling (uncapped generation lengths)}} \\
+\multicolumn{2}{@{}l}{\texttt{Llama-3.2-1B-Inst.} (5)} & 2.5 / 3.2 & 32 KB & $9.84 \to 22.15$ & $0.10 \to 1.45$ ($14\times$) & 0.20 \\
+\multicolumn{2}{@{}l}{\texttt{Phi-3-mini-4k} (5)} & 7.6 / 14.5 & 384 KB & $5.58 \to 61.29$ & $0.18 \to 0.52$ ($2.9\times$) & 0.67 \\
 \bottomrule
-\end{tabular}
-\vspace{-0.2cm}
+\end{tabular}%
+}
+\vspace{-2pt}
 \end{table}
 
-\subsection{Empirical GPU Grounding (Tesla T4 \& Qwen 2.5-1.5B)}
-We measured batched inference latency on an Nvidia Tesla T4 GPU (Google Colab and Kaggle environments, CUDA 12.8, PyTorch 2.1) executing `Qwen/Qwen2.5-1.5B-Instruct` in FP16 precision. We swept batch sizes $B \in \{1, 2, 4, 8, 16, 32\}$ with 10 independent trials per batch size, using CUDA event synchronization to isolate raw model execution wall-clock time.
+\section{Layer-2 Empirical GPU Analysis and Simulation Results}
+To address Phase-1 Feedback~\#2 (\emph{stronger experiments, diverse models, and heterogeneous queries}), we executed hardware profiling on Nvidia Tesla T4 GPUs alongside multi-parameter simulator campaigns E2 and E3.
 
-\textbf{Calibration vs. Held-Out Evaluation.} We partitioned the measurement suite into a \emph{calibration split} $B \in \{1, 4, 16\}$ and an unseen \emph{held-out test split} $B \in \{2, 8, 32\}$. We fitted a power-law scaling relationship:
+\subsection{Empirical GPU Grounding \& Split Calibration (Tesla T4, Qwen 2.5-1.5B)}
+We profiled \texttt{Qwen/Qwen2.5-1.5B-Instruct} in FP16 (\texttt{sdpa} attention, KV-cache enabled) on Nvidia Tesla T4 GPUs ($15.36\text{ GB}$ VRAM, CUDA 12.8, PyTorch 2.11) across Google Colab and Kaggle. We swept static batch sizes $B \in \{1, 2, 4, 8, 16, 32\}$ with 10 trials per size (60 batch runs, 630 generated sequences) using CUDA-synchronized timers, plus 20 CPU tokenizer trials ($0.206\text{ ms}$ mean, $\text{SD}{=}0.283\text{ ms}$, range $[0.068, 1.369]\text{ ms}$).
+
+\textbf{Out-of-Sample Power-Law Calibration.}
+We split the batch sweep into a \emph{calibration set} $B_{\text{cal}} \in \{1, 4, 16\}$ and an unseen \emph{held-out test set} $B_{\text{test}} \in \{2, 8, 32\}$. Log-linear OLS regression on $B_{\text{cal}}$ yields:
 \begin{equation}
-T_{\text{batch}}(B) = a \cdot B^\alpha,
+T_{\text{batch}}(B) = a \cdot B^\alpha, \quad a = 4.0301\text{ s}, \quad \alpha = 0.001044.
+\label{eq:power_law}
 \end{equation}
-yielding $a = 4.0301$ seconds and $\alpha = 0.00104$. As detailed in Table~\ref{tab:gpu_heldout}, evaluating this model on the held-out batch sizes demonstrates outstanding predictive accuracy:
-\begin{itemize}
-    \item \textbf{Batch Latency MAPE:} \textbf{4.43\%} (maximum error $6.29\%$ at $B=8$).
-    \item \textbf{System Throughput MAPE:} \textbf{4.18\%} across all held-out points.
-\end{itemize}
+As shown in Table~\ref{tab:gpu_empirical} (Part~A) and Fig.~\ref{fig:gpu_plots} (left), predicting on held-out sizes $B \in \{2, 8, 32\}$ achieves a \textbf{Batch Latency MAPE of $4.43\%$} (individual errors $+6.26\%, +6.29\%, +0.74\%$) and a \textbf{Throughput MAPE of $4.18\%$}. Because $\alpha \approx 0.001$ under the 96-token cap ($90\text{--}98\%$ of sequences hit 96 tokens), batch latency stays nearly flat ($\approx 3.80\text{--}4.01\text{ s}$) from $B{=}1$ to $32$, scaling throughput $30.8\times$ from $24.59\text{ tok/s}$ ($0.259\text{ req/s}$ at $B{=}1$) to $763.28\text{ tok/s}$ ($7.970\text{ req/s}$ at $B{=}32$). Cross-platform Kaggle vs.\ Colab means agree within $1.70\text{--}4.94\%$ across $B \in \{1, 2, 8, 16, 32\}$.
 
-\subsection{Query Diversity \& Response-Length Analysis}
-To address the professor's recommendation regarding query diversity, we investigated how variable response lengths affect decode latency. In token-capped runs (capped at 96 tokens), $90$--$98\%$ of generations reached the ceiling. To characterize natural generation distributions, we executed an uncapped diagnostic on 100 diverse prompts with a 512-token ceiling (where $0/100$ hit the cap).
-
-\textbf{Max-Sequence-Length vs. Linear Predictor.} In batched autoregressive decoding, all sequences in a batch must wait for the longest sequence to complete before the batch can be retired. We compared a response-length-aware predictor against a traditional linear-in-$B$ model:
-\begin{itemize}
-    \item Correlation between batch latency and batch size $B$: $r = 0.7384$.
-    \item Correlation between batch latency and $\max_{j} (\text{Length}_j)$: \textbf{$r = 0.9493$}.
-    \item Model MAPE: Accounting for maximum sequence length drops prediction error from \textbf{$15.25\%$} down to \textbf{$9.14\%$} for latency, and from $17.60\%$ to $10.75\%$ for throughput.
-\end{itemize}
-
-\begin{figure}[t]
+\begin{figure}[!t]
 \centering
-\includegraphics[width=0.84\linewidth]{../GPU_Measurements/NAME3_GPU_Analysis/batch_time_vs_max_length.png}
-\vspace{-0.2cm}
-\caption{Empirical Tesla T4 GPU measurements: batch execution time correlates strongly with maximum sequence length ($r = 0.9493$), showing length dominates batch size.}
-\label{fig:max_length_corr}
-\vspace{-0.3cm}
+\begin{minipage}[t]{0.52\linewidth}
+\centering
+\incplot{../GPU_Measurements/colab_kaggle_sweep/sweep_20260920T132814Z_96c7e45f/colab_kaggle_comparison.png}{colab_kaggle_comparison.png}{\linewidth}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.46\linewidth}
+\centering
+\incplot{../GPU_Measurements/NAME3_GPU_Analysis/geometric_cdf_comparison.png}{geometric_cdf_comparison.png}{\linewidth}
+\end{minipage}
+\vspace{-2pt}
+\caption{Layer-2 Tesla T4 GPU measurements (\texttt{Qwen2.5-1.5B-Instruct}). \emph{Left:} Batch execution time and throughput across $B \in \{1,\dots,32\}$ on Colab and Kaggle with power-law calibration on $\{1,4,16\}$ and held-out validation on $\{2,8,32\}$ ($4.43\%$ MAPE). \emph{Right:} Uncapped 100-prompt empirical sequence-length CDF vs.\ fitted geometric CDF ($KS = 0.3965$).}
+\label{fig:gpu_plots}
+\vspace{-3pt}
 \end{figure}
 
-\textbf{Distribution Fit \& Memoryless Assumption.} Evaluating the uncapped empirical sequence length distribution against a memoryless geometric fit yielded a Kolmogorov-Smirnov test statistic of \textbf{$KS = 0.3965$}. This significant divergence demonstrates that real-world LLM output lengths exhibit heavy-tailed characteristics rather than purely memoryless geometric decay, providing strong empirical rationale for data-driven service models in $Q_3$.
-
-\subsection{Multi-Model Scaling Considerations}
-In evaluating model parameter scaling, transformer architecture imposes distinct memory-bandwidth constraints. On a Tesla T4 GPU (peak FP16 throughput 65 TFLOPS, memory bandwidth 320 GB/s), a 1.5B parameter model requires $\approx 3.0$ GB in FP16. Memory bandwidth per token step is $\approx 9.4$ ms. For larger 7B models, weight footprint expands to $\approx 14$ GB, increasing single-step memory bandwidth access to $\approx 44$ ms. Consequently, larger models experience steeper batching amortization gains ($\delta$ scaling), whereas smaller models (e.g. Qwen 0.5B, 1.0 GB footprint) become compute-saturated at modest batch caps.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.88\linewidth]{../Project_Simulator/figures/fig_e2_e2e_delay.pdf}
-\vspace{-0.2cm}
-\caption{Experiment E2: End-to-end sojourn delay ($W_{\text{e2e}}$) vs. arrival rate $\lambda$ across worker pools ($c \in \{1, 2\}$) and service laws (Deterministic vs. Geometric).}
-\label{fig:e2_delay}
-\vspace{-0.3cm}
-\end{figure}
-
-\subsection{Experiment E2: Worker Parallelism \& Variance Absorption}
-In Experiment E2, we evaluated the interaction between service time variability and worker parallelism by sweeping $\lambda \in [0.05, 0.45]$ across worker pools $c \in \{1, 2\}$ under deterministic and geometric service laws ($E[S_3] = 2$).
-
-As shown in Fig.~\ref{fig:e2_delay}, under a single worker ($c=1$), geometric service incurs a severe latency penalty as load increases: at $\lambda = 0.45$, end-to-end sojourn jumps from $8.52$ cycles (deterministic) to $15.35$ cycles (geometric)---an $80.2\%$ inflation caused by variance in decode step lengths. Crucially, scaling the GPU worker pool to $c=2$ completely absorbs this variance penalty, reducing geometric sojourn to $8.55$ cycles (virtually identical to the deterministic baseline of $8.52$). Parallel worker allocation effectively mitigates head-of-line blocking in autoregressive serving.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.88\linewidth]{../Project_Simulator/figures/fig_e3_batching.pdf}
-\vspace{-0.2cm}
-\caption{Experiment E3: Batching trade-off frontier. Mean queue waiting delay ($W_{\text{e2e}}$) vs. batch capacity $B$ across timeout thresholds $\tau \in \{2, 8\}$ at $\lambda = 0.30$.}
-\label{fig:e3_batching}
-\vspace{-0.3cm}
-\end{figure}
-
-\subsection{Experiment E3: Batching Scheduler Trade-Offs}
-Experiment E3 maps the 2D parameter trade-off across batch capacity $B \in \{1, 2, 4, 8, 16\}$ and timeout threshold $\tau \in \{2, 8\}$ at injection load $\lambda = 0.30$ with batch service scaling $S(b) = S_3 + \delta(b-1)$ ($\delta = 0.5$).
-
-Fig.~\ref{fig:e3_batching} highlights the fundamental Pareto trade-off:
-\begin{itemize}
-    \item \textbf{Small Batches ($B=1$):} Requests bypass $Q_2$ with zero aggregation delay ($W_{q,2} = 0$), minimizing end-to-end delay ($W_{\text{e2e}} = 2.45$ cycles). However, GPU worker utilization remains high ($\rho_3 = 0.60$).
-    \item \textbf{Large Batches ($B \ge 8$):} Batch accumulation dramatically improves GPU compute efficiency, slashing worker utilization from $0.60$ down to $0.31$ (a $48.3\%$ compute reduction). However, individual requests wait in $Q_2$ for batches to fill, inflating average sojourn delay to $4.18$ cycles.
-    \item \textbf{Timeout Protection ($\tau$):} During low-rate bursts, the timer $\tau = 2$ forces partial batch dispatch, bounding maximum queue wait and preventing tail latency collapse.
-\end{itemize}
-
-\section{Conclusion \& Phase-3 Roadmap}
-In Phase 2, we have advanced our LLM inference serving queueing simulator on two key fronts. First, we demonstrated that the serving pipeline is naturally modeled as a three-station queueing chain, analytically verified within $<1\%$ against discrete-time closed forms over $10^7$ cycles. Second, directly responding to instructor feedback, we integrated empirical Tesla T4 GPU measurements on Qwen 2.5-1.5B, proving that power-law batch scaling achieves $4.43\%$ MAPE on held-out test splits and that sequence length dictates decode runtime ($r = 0.9493$).
-
-\textbf{Roadmap for Phase 3:}
-\begin{enumerate}
-    \item Finalize the physical millisecond-to-cycle mapping factor (`cycle\_ms`) to directly feed measured GPU kernels into discrete simulation steps.
-    \item Extend $Q_2$ to continuous (iteration-level) batching, reflecting modern vLLM scheduling mechanics.
-    \item Benchmark parameter scaling across multiple model sizes (Qwen 0.5B vs. 1.5B vs. 7B) to capture hardware memory-bandwidth saturation boundaries.
+\subsection{Query Diversity, Straggler Length \& Non-Geometric Distributions}
+To move beyond fixed 96-token caps and evaluate natural query diversity, we conducted two uncapped diagnostic studies with a 512-token ceiling:
+\begin{enumerate}\setlength{\itemsep}{0pt}\setlength{\topsep}{1pt}
+  \item \emph{100-Prompt Uncapped Length Diagnostic:} Across 100 diverse prompts, $0/100$ hit the 512-token cap. Generated lengths spanned $[83, 487]$ tokens (median $254.5$, mean $255.23$, $\text{SD}{=}74.57$, P90 $330.4$, P99 $442.5$ tokens; wall time $3.36\text{--}19.80\text{ s}$, mean $10.30\text{ s}$). Fig.~\ref{fig:gpu_plots} (right) shows that comparing the empirical CDF against a fitted memoryless geometric distribution yields $\mathbf{KS = 0.3965}$, proving that real LLM outputs exhibit a positive minimum-length floor and heavy concentration around $180\text{--}330$ tokens rather than memoryless step-1 decay.
+  \item \emph{Uncapped Straggler Coupling ($r{=}0.9493$):} In static batching, a worker holds the batch until the \emph{longest sequence} $L_{\max} = \max_{j \le B} L_j$ completes. Across 30 uncapped batch trials ($B \in \{1,\dots,32\}$), batch time correlates moderately with $B$ ($r{=}0.7384$) only because $E[\max_{j \le B} L_j]$ grows from $232.8$ tokens ($B{=}1$) to $454.2$ tokens ($B{=}32$), whereas correlation with $L_{\max}$ is $\mathbf{r = 0.9493}$ ($\approx 40.3\text{ ms/token}$). As shown in Table~\ref{tab:gpu_empirical} (Part~B), conditioning on $L_{\max}$ cuts held-out latency MAPE on $B \in \{2, 8, 32\}$ from $\mathbf{15.25\%}$ (linear-in-$B$) to $\mathbf{9.14\%}$ and throughput MAPE from $\mathbf{17.60\%}$ to $\mathbf{10.75\%}$.
 \end{enumerate}
 
-\begin{thebibliography}{9}
+\subsection{Multi-Model Batch-Scaling Sweeps \& Cycle Mapping}
+Beyond the \texttt{Qwen2.5-1.5B-Instruct} calibration ($\approx 3.0\text{ GB}$ FP16 weights, HBM weight-read floor $\approx 9.4\text{ ms/step}$ at $320\text{ GB/s}$ vs.\ measured $\approx 40.3\text{ ms/step}$), Table~\ref{tab:gpu_empirical} (Part~C) reports measured T4 sweeps on three further model families (\texttt{Gemma-2-2B-it}, \texttt{Llama-3.2-1B-Instruct}, \texttt{Phi-3-mini-4k-instruct}) over the same $B \in \{1, \dots, 32\}$ with 5--10 trials per size. Under the 96-token cap, all three families reproduce the flat service law seen for Qwen: batch time grows by only $4\text{--}9\%$ from $B{=}1$ to $B{=}32$ ($\alpha{=}0.012$ for Gemma, $0.022$ for Llama), so request throughput rises by $\approx 29\text{--}31\times$, and measured per-step decode time ($\approx 27\text{ ms}$ Llama, $\approx 50\text{ ms}$ Gemma) sits $3.1\text{--}4.3\times$ above each model's weight-read floor ($7.7$ and $16.3\text{ ms}$). Without the cap, scaling is model-dependent: \texttt{Llama-3.2-1B} remains strongly sublinear ($\alpha{=}0.20$, $14\times$ throughput gain), whereas \texttt{Phi-3-mini} ($7.6\text{ GB}$ weights, $384\text{ KB}$ KV-cache/token) is close to linear ($\alpha{=}0.67$, only $2.9\times$ gain) and peaks at $14.5\text{ GB}$ of the $15.4\text{ GB}$ T4 at $B{=}32$ (two larger-batch runs on other workloads ran out of memory). The capped and uncapped rows are separate regimes and are not compared across groups: uncapped Llama batches are dominated by sequences reaching the 512-token ceiling. Finalizing the physical \texttt{cycle\_ms} mapping in \texttt{calibration\_parameters.json} is scheduled for Phase~3.
+
+\begin{table}[!t]
+\centering
+\caption{Simulation Experiments E2 (Worker Scaling) \& E3 (Batching Trade-Offs, $\lambda{=}0.30, \delta{=}0.5, 10^7$ Cycles)}
+\label{tab:e2_e3}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}rrrrrrrr@{}}
+\toprule
+\multicolumn{8}{@{}l}{\textbf{Part A: Experiment E2 --- Service Variability \& Worker Parallelism ($B{=}1, \tau{=}0, 10^6$ Cycles)}} \\
+$\lambda$ & $c1\text{-D}$ $W_{\text{soj}}$ & $c1\text{-Geo}$ $W_{\text{soj}}$ & \textbf{Var.\ Premium} & $c2\text{-Geo}$ $W_{\text{soj}}$ & $L_{q,1}$ (All) & $L_{q,3}$ ($c1\text{-D}$) & $L_{q,3}$ ($c1 / c2\text{-Geo}$) \\
+\midrule
+0.10 & 4.123 & 4.303 & $+4.4\%$ & 4.122 & 0.0123 & 0.0000 & 0.0183 / 0.0001 \\
+0.20 & 4.332 & 4.835 & $+11.6\%$ & 4.340 & 0.0664 & 0.0000 & 0.1004 / 0.0014 \\
+0.30 & 4.754 & 5.871 & $+23.5\%$ & 4.770 & 0.2264 & 0.0000 & 0.3349 / 0.0044 \\
+0.40 & 6.018 & 9.067 & $+50.7\%$ & 6.050 & 0.8074 & 0.0000 & 1.2185 / 0.0111 \\
+\textbf{0.45} & \textbf{8.519} & \textbf{15.350} & $\mathbf{+80.2\%}$ & \textbf{8.549} & \textbf{2.0346} & \textbf{0.0000} & \textbf{3.0761 / 0.0142} \\
+0.49 & 28.823 & 69.151 & $+139.9\%$ & 28.862 & 12.1750 & 0.0000 & 19.7793 / 0.0185 \\
+\midrule
+\multicolumn{8}{@{}l}{\textbf{Part B: Experiment E3 --- Batching Scheduler Trade-Off Grid ($\lambda{=}0.30, \delta{=}0.5, c{=}1, 10^7$ Cycles)}} \\
+$B$ & $\tau$ & \textbf{Mean Fill $\bar{b}$} & $W_{\text{soj}}$ (cyc) & $W_{\text{qwait}}$ (cyc) & $L_{q,2}$ (req) & \textbf{$Q_3$ Util.\ $\hat{\rho}_3$} & \textbf{Throughput} \\
+\midrule
+\textbf{1} & \textbf{2 or 8} & \textbf{1.000} & \textbf{4.752} & \textbf{0.752} & \textbf{0.000} & \textbf{0.5999} & \textbf{0.3000} \\
+2 & 2 & 1.574 & 6.752 & 2.023 & 0.381 & 0.4906 & 0.3000 \\
+4, 8, 16 & 2 & 1.574 & 6.752 & 2.023 & 0.381 & 0.4906 & 0.3000 \\
+2 & 8 & 1.953 & 7.360 & 2.384 & 0.489 & 0.4536 & 0.3000 \\
+4 & 8 & 3.172 & 10.438 & 4.875 & 1.236 & 0.3224 & 0.3000 \\
+\textbf{8} & \textbf{8} & \textbf{3.329} & \textbf{10.969} & \textbf{5.391} & \textbf{1.391} & \textbf{0.3063} & \textbf{0.3000} \\
+\textbf{16} & \textbf{8} & \textbf{3.329} & \textbf{10.969} & \textbf{5.391} & \textbf{1.391} & \textbf{0.3063} & \textbf{0.3000} \\
+\bottomrule
+\end{tabular}%
+}
+\vspace{-2pt}
+\end{table}
+
+\begin{figure}[!t]
+\centering
+\incplot{../Project_Simulator/figures/fig_e2_e2e_delay.pdf}{fig_e2_e2e_delay.pdf}{0.68\linewidth}
+\vspace{-2pt}
+\caption{Experiment E2 ($10^6$-cycle CRN sweep, $B{=}1$): End-to-end sojourn delay ($W_{\text{soj}}$) vs.\ injection rate $\lambda$. Geometric decode variance at $c{=}1$ inflates delay by $80.2\%$ at $\lambda{=}0.45$ ($15.35$ vs.\ $8.52$ cycles), whereas $c{=}2$ parallel workers absorb the penalty ($8.55$ cycles).}
+\label{fig:e2_delay}
+\vspace{-3pt}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\incplot{../Project_Simulator/figures/fig_e3_batching.pdf}{fig_e3_batching.pdf}{0.88\linewidth}
+\vspace{-2pt}
+\caption{Experiment E3 ($\lambda{=}0.30, \delta{=}0.5, 10^7$ cycles, CRN-paired): End-to-end sojourn $W_{\text{soj}}$, throughput, and mean batch fill $\bar{b}$ across $B \in \{1,2,4,8,16\}$ and $\tau \in \{2,8\}$. At $\tau{=}8$, fill and delay saturate between $B{=}4$ ($\bar{b}{=}3.17$) and $B{=}8$ ($\bar{b}{=}3.33$).}
+\label{fig:e3_batching}
+\vspace{-3pt}
+\end{figure}
+
+\subsection{Experiment E2: Service Variability \& Worker Parallelism}
+Experiment E2 (\texttt{experiment\_e2\_pipeline.csv}) sets $Q_2$ to pass-through ($B{=}1, \tau{=}0$) and compares deterministic ($S_3{=}2$) vs.\ geometric ($E[S_3]{=}2$) GPU service across $c \in \{1, 2\}$ under CRN-paired arrivals. Table~\ref{tab:e2_e3} (Part~A) and Fig.~\ref{fig:e2_delay} show:
+\textbf{(1) Structural Zero-Queue Property:} In all 22 deterministic runs ($c \in \{1,2\}$, all $\lambda$), $L_{q,3} = 0.0000$ identically: $Q_1$ ($S_1{=}2$) spaces departures by $\ge 2$ cycles, so a 2-cycle $Q_3$ service finishes before the next arrival dispatches.
+\textbf{(2) Variability Premium at $c{=}1$:} Geometric $Q_3$ service builds a large queue ($L_{q,3}{=}3.076$ at $\lambda{=}0.45$), inflating sojourn by $+23.5\%$ at $\lambda{=}0.30$ ($4.754 \to 5.871$ cycles), $+80.2\%$ at $\lambda{=}0.45$ ($8.519 \to 15.350$ cycles), and $+139.9\%$ at $\lambda{=}0.49$ ($28.823 \to 69.151$ cycles).
+\textbf{(3) Parallel Absorption ($c{=}2$):} Adding a second worker ($c2\text{-Geo}$) cuts $L_{q,3}$ at $\lambda{=}0.45$ to $0.0142$, reducing sojourn from $15.350$ to $8.549$ cycles (within $0.030$ cycles of deterministic $8.519$).
+
+\subsection{Experiment E3: Static Batching Scheduler Trade-Offs}
+Experiment E3 (\texttt{experiment\_e3\_batching.csv}) sweeps $B \in \{1, 2, 4, 8, 16\} \times \tau \in \{2, 8\}$ at $\lambda{=}0.30$ with sublinear batch service $S_3(b) = \lceil 2 + 0.5(b - 1) \rceil$ ($\delta{=}0.5, c{=}1$) over $10^6$ and $10^7$ cycles (agreeing within $\le 0.0038$ cycles / $0.29\%$). Table~\ref{tab:e2_e3} (Part~B) and Fig.~\ref{fig:e3_batching} demonstrate:
+\textbf{(1) Delay vs.\ Utilization Pareto Trade-Off:} Unbatched serving ($B{=}1$) minimizes end-to-end sojourn ($W_{\text{soj}}{=}4.752$ cycles, $W_q{=}0.752$ cycles, $L_{q,2}{=}0$) but requires high GPU worker utilization ($\hat{\rho}_3{=}0.5999$). Batching at $\tau{=}8, B{\ge}8$ achieves mean fill $\bar{b}{=}3.329$ ($3.400$ cycles/batch), slashing GPU utilization by $\mathbf{48.9\%}$ ($\hat{\rho}_3: 0.5999 \to 0.3063$) while raising $Q_2$ wait ($W_{\text{soj}}{=}10.969$, $W_q{=}5.391$ cycles).
+\textbf{(2) Short-Timer Invariance ($\tau{=}2$):} At $\tau{=}2$, the timer fires before $B$ requests accumulate behind $Q_1$, making $B \in \{2,4,8,16\}$ identical ($\bar{b}{=}1.574, W_{\text{soj}}{=}6.752, \hat{\rho}_3{=}0.4906$).
+\textbf{(3) Saturation Knee ($\tau{=}8$):} Fill rises from $1.953$ ($B{=}2$) to $3.172$ ($B{=}4$) and saturates at $3.329$ for $B \in \{8, 16\}$ (identical rows), while throughput stays invariant at $0.3000\text{ req/cycle}$ across all 20 runs.
+
+\section{Limitations, Conclusion, and Phase-3 Plan}
+\textbf{Limitations \& Phase-3 Plan.} Our simulator models a feedforward chain with Bernoulli arrivals, static batching, and non-preemptive GPU service. In Phase~3, we will: (1)~extend sweeps in Table~\ref{tab:gpu_empirical} to summarization and code workloads, calibrating model-specific slopes $\delta$; (2)~finalize the physical \texttt{cycle\_ms} mapping; and (3)~incorporate network bounds (V4) and empirical $L_{\max}$ sampling at $Q_3$.
+
+\textbf{Conclusion \& Code Availability.} This Phase-2 report resolves both Phase-1 feedback items via an explicit systems-to-queueing latency decomposition verified to $<0.95\%$ over $10^7$ cycles, multi-model Tesla T4 GPU sweeps across four model families (\texttt{Qwen2.5-1.5B} at $4.43\%$ held-out MAPE, \texttt{Gemma-2-2B}, \texttt{Llama-3.2-1B}, \texttt{Phi-3-mini-4k}), 100 uncapped diagnostics ($KS{=}0.3965$, $r{=}0.9493$, $9.14\%$ MAPE), and E2/E3 trade-off analyses. Full code and measurement traces are publicly available at \url{https://github.com/vaibhav3000/CSA-Modelling-Simulation-Project} and \url{https://github.com/h2o-Noob/MS-Project}.
+
+\begin{thebibliography}{9}\setlength{\itemsep}{0.5pt}\setlength{\parskip}{0pt}\scriptsize
 \bibitem{kwon2023vllm}
-W.~Kwon, Z.~Li, S.~Zhuang, Y.~Sheng, L.~Zheng, C.~H. Yu, J.~E. Gonzalez, H.~Zhang, and I.~Stoica, ``Efficient memory management for large language model serving with PagedAttention,'' in \emph{Proc. 29th ACM SOSP}, 2023, pp. 611--626.
-
+W.~Kwon \emph{et al.}, ``Efficient memory management for large language model serving with PagedAttention,'' in \emph{Proc. ACM SOSP}, 2023, pp. 611--626.
 \bibitem{yu2022orca}
-G.-I. Yu, J.~S. Jeong, G.-W. Kim, S.~Kim, and B.-G. Chun, ``Orca: A distributed serving system for transformer-based generative models,'' in \emph{Proc. 16th USENIX OSDI}, 2022, pp. 521--538.
-
+G.-I. Yu \emph{et al.}, ``Orca: A distributed serving system for transformer-based generative models,'' in \emph{Proc. USENIX OSDI}, 2022, pp. 521--538.
 \bibitem{sheng2023flexgen}
-Y.~Sheng, L.~Zheng, B.~Yuan, Z.~Li, M.~Ryabinin, B.~Chen, P.~Liang, C.~R{\'e}, I.~Stoica, and C.~Zhang, ``FlexGen: High-throughput generative inference of large language models with a single GPU,'' in \emph{Proc. 40th ICML}, 2023.
-
+Y.~Sheng \emph{et al.}, ``FlexGen: High-throughput generative inference of large language models with a single GPU,'' in \emph{Proc. ICML}, 2023, pp. 31094--31116.
 \bibitem{agrawal2024vidur}
-A.~Agrawal, N.~Kedia, A.~Panwar, J.~Mohan, N.~Kwatra, B.~S. Gulavani, A.~Tumanov, and R.~Ramjee, ``Vidur: A large-scale simulation framework for LLM inference,'' in \emph{Proc. MLSys}, 2024.
-
+A.~Agrawal \emph{et al.}, ``Vidur: A large-scale simulation framework for LLM inference,'' in \emph{Proc. MLSys}, 2024.
 \bibitem{mor2006discrete}
-M.~Haviv, \emph{Queues: A Course in Queueing Theory}, ser. International Series in Operations Research \& Management Science.\hskip 1em plus 0.5em minus 0.4em\relax Springer, 2013, vol. 191.
-
+M.~Haviv, \emph{Queues: A Course in Queueing Theory}.\hskip 0.4em\relax Springer, 2013, vol. 191.
 \bibitem{zheng2023response}
-L.~Zheng, W.-L. Chiang, Y.~Sheng, S.~Zhuang, Z.~Wu, Y.~Zhuang, Z.~Lin, Z.~Li, D.~Li, E.~P. Xing, H.~Zhang, J.~E. Gonzalez, and I.~Stoica, ``Judging LLM-as-a-judge with MT-Bench and Chatbot Arena,'' in \emph{Advances in NeurIPS 36}, 2023.
+L.~Zheng \emph{et al.}, ``Judging LLM-as-a-judge with MT-Bench and Chatbot Arena,'' in \emph{Advances in NeurIPS}, vol. 36, 2023, pp. 46595--46623.
 \end{thebibliography}
 
 \end{document}
