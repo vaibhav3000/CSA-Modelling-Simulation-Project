@@ -7,7 +7,7 @@
 
 ---
 
-## 👥 Group Members
+## Group Members
 
 | Name | SR Number | Department / Degree Program |
 |---|---|---|
@@ -18,7 +18,7 @@
 
 ---
 
-## 📋 Course Milestones & Status
+## Course Milestones & Status
 
 | Phase | Milestone Description | Deadline / Return Date | Status / Notes |
 |---|---|---|---|
@@ -28,7 +28,7 @@
 
 ---
 
-## 📖 Project Overview
+## Project Overview
 
 Large Language Model (LLM) serving systems (such as vLLM, TensorRT-LLM, and Hugging Face TGI) process requests through multi-stage pipelines subject to arrival bursts and variable token lengths. In this project, we develop a cycle-driven, discrete-time queueing-network simulator that models the serving pipeline as a three-station feedforward chain:
 
@@ -43,7 +43,7 @@ Large Language Model (LLM) serving systems (such as vLLM, TensorRT-LLM, and Hugg
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```text
 CSA-Modelling-Simulation-Project/
@@ -100,7 +100,7 @@ CSA-Modelling-Simulation-Project/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Python 3.10+
