@@ -6,7 +6,8 @@
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{array}
-\usepackage[hidelinks]{hyperref}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, urlcolor=blue, linkcolor=black, citecolor=black}
 \usepackage{cite}
 
 % Compact float, list, and line spacing to guarantee strict 4-page IEEE fit in Overleaf
@@ -47,7 +48,7 @@
   \IEEEauthorblockN{Vaibhav Mahore (23631)\IEEEauthorrefmark{1}, Sujal Chavda (24288)\IEEEauthorrefmark{1}, Arindam Raina (25880)\IEEEauthorrefmark{1}, Shreemaye Das (25958)\IEEEauthorrefmark{2}}
   \IEEEauthorblockA{\IEEEauthorrefmark{1}Department of Computer Science and Automation (CSA), Indian Institute of Science, Bangalore, India}
   \IEEEauthorblockA{\IEEEauthorrefmark{2}Department of Computational and Data Sciences (CDS), Indian Institute of Science, Bangalore, India}
-  \IEEEauthorblockA{Course: E0 240 (Modeling and Simulation) \quad Email: \{vaibhavm, sujals, arindamr, shreemayed\}@iisc.ac.in}
+  \IEEEauthorblockA{Course: E0 240 (Modeling and Simulation) \quad Email: \{mvaibhav, sujals, arindamr, shreemayed\}@iisc.ac.in}
 }
 
 \begin{document}
@@ -194,9 +195,9 @@ For geometric service with $E[S]{=}2$ ($\text{Var}(S){=}2$), discrete-time Polla
 \textbf{Batch} & \textbf{Split} & \textbf{Colab} & \textbf{Kaggle} & \textbf{Power-Law} & \textbf{Latency} & \textbf{Measured / Pred.} \\
 \textbf{Size $B$} & \textbf{Role} & \textbf{Mean (s)} & \textbf{Mean (s)} & \textbf{Pred.\ (s)} & \textbf{Error} & \textbf{Req/s (Error)} \\
 \midrule
-1 & Calib. & $3.868 \pm 0.29$ & 4.069 & 4.030 & --- & 0.259 / 0.248 (---) \\
-4 & Calib. & $4.382 \pm 2.21$ & 3.826 & 4.036 & --- & 0.913 / 0.991 (---) \\
-16 & Calib. & $3.879 \pm 0.29$ & 3.980 & 4.042 & --- & 4.125 / 3.959 (---) \\
+1 & Calib. & $3.868 \pm 0.29$ & 4.069 & 4.030 & -- & 0.259 / 0.248 (--) \\
+4 & Calib. & $4.382 \pm 2.21$ & 3.826 & 4.036 & -- & 0.913 / 0.991 (--) \\
+16 & Calib. & $3.879 \pm 0.29$ & 3.980 & 4.042 & -- & 4.125 / 3.959 (--) \\
 \textbf{2} & \textbf{Held-Out} & $\mathbf{3.795 \pm 0.28}$ & \textbf{3.869} & \textbf{4.033} & \textbf{+6.26\%} & \textbf{0.527 / 0.496 (-5.89\%)} \\
 \textbf{8} & \textbf{Held-Out} & $\mathbf{3.800 \pm 0.28}$ & \textbf{3.865} & \textbf{4.039} & \textbf{+6.29\%} & \textbf{2.105 / 1.981 (-5.92\%)} \\
 \textbf{32} & \textbf{Held-Out} & $\mathbf{4.015 \pm 0.30}$ & \textbf{4.088} & \textbf{4.045} & \textbf{+0.74\%} & \textbf{7.970 / 7.912 (-0.74\%)} \\
@@ -213,7 +214,7 @@ For geometric service with $E[S]{=}2$ ($\text{Var}(S){=}2$), discrete-time Polla
 \multicolumn{2}{@{}l}{} & \textbf{GB ($B{=}32$)} & \textbf{per Token} & $\mathbf{B{=}1 \to 32}$ & $\mathbf{B{=}1 \to 32}$ & \textbf{Exponent $\alpha$} \\
 \midrule
 \multicolumn{7}{@{}l}{\textit{96-token cap (controlled hardware benchmark)}} \\
-\multicolumn{2}{@{}l}{\texttt{Qwen2.5-1.5B} (10)} & 3.0 / --- & 28 KB & $3.87 \to 4.02$ & $0.26 \to 7.97$ ($31\times$) & 0.001 \\
+\multicolumn{2}{@{}l}{\texttt{Qwen2.5-1.5B} (10)} & 3.0 / -- & 28 KB & $3.87 \to 4.02$ & $0.26 \to 7.97$ ($31\times$) & 0.001 \\
 \multicolumn{2}{@{}l}{\texttt{Gemma-2-2B-it} (6)} & 5.2 / 5.7 & 104 KB & $4.79 \to 5.07$ & $0.21 \to 6.31$ ($30\times$) & 0.012 \\
 \multicolumn{2}{@{}l}{\texttt{Llama-3.2-1B-Inst.} (10)} & 2.5 / 2.7 & 32 KB & $2.63 \to 2.87$ & $0.38 \to 11.14$ ($29\times$) & 0.022 \\
 \multicolumn{7}{@{}l}{\textit{512-token ceiling (uncapped generation lengths)}} \\
@@ -272,7 +273,7 @@ Beyond the \texttt{Qwen2.5-1.5B-Instruct} calibration ($\approx 3.0\text{ GB}$ F
 \resizebox{\columnwidth}{!}{%
 \begin{tabular}{@{}rrrrrrrr@{}}
 \toprule
-\multicolumn{8}{@{}l}{\textbf{Part A: Experiment E2 --- Service Variability \& Worker Parallelism ($B{=}1, \tau{=}0, 10^6$ Cycles)}} \\
+\multicolumn{8}{@{}l}{\textbf{Part A: Experiment E2: Service Variability \& Worker Parallelism ($B{=}1, \tau{=}0, 10^6$ Cycles)}} \\
 $\lambda$ & $c1\text{-D}$ $W_{\text{soj}}$ & $c1\text{-Geo}$ $W_{\text{soj}}$ & \textbf{Var.\ Premium} & $c2\text{-Geo}$ $W_{\text{soj}}$ & $L_{q,1}$ (All) & $L_{q,3}$ ($c1\text{-D}$) & $L_{q,3}$ ($c1 / c2\text{-Geo}$) \\
 \midrule
 0.10 & 4.123 & 4.303 & $+4.4\%$ & 4.122 & 0.0123 & 0.0000 & 0.0183 / 0.0001 \\
@@ -282,7 +283,7 @@ $\lambda$ & $c1\text{-D}$ $W_{\text{soj}}$ & $c1\text{-Geo}$ $W_{\text{soj}}$ & 
 \textbf{0.45} & \textbf{8.519} & \textbf{15.350} & $\mathbf{+80.2\%}$ & \textbf{8.549} & \textbf{2.0346} & \textbf{0.0000} & \textbf{3.0761 / 0.0142} \\
 0.49 & 28.823 & 69.151 & $+139.9\%$ & 28.862 & 12.1750 & 0.0000 & 19.7793 / 0.0185 \\
 \midrule
-\multicolumn{8}{@{}l}{\textbf{Part B: Experiment E3 --- Batching Scheduler Trade-Off Grid ($\lambda{=}0.30, \delta{=}0.5, c{=}1, 10^7$ Cycles)}} \\
+\multicolumn{8}{@{}l}{\textbf{Part B: Experiment E3: Batching Scheduler Trade-Off Grid ($\lambda{=}0.30, \delta{=}0.5, c{=}1, 10^7$ Cycles)}} \\
 $B$ & $\tau$ & \textbf{Mean Fill $\bar{b}$} & $W_{\text{soj}}$ (cyc) & $W_{\text{qwait}}$ (cyc) & $L_{q,2}$ (req) & \textbf{$Q_3$ Util.\ $\hat{\rho}_3$} & \textbf{Throughput} \\
 \midrule
 \textbf{1} & \textbf{2 or 8} & \textbf{1.000} & \textbf{4.752} & \textbf{0.752} & \textbf{0.000} & \textbf{0.5999} & \textbf{0.3000} \\
@@ -331,7 +332,7 @@ Experiment E3 (\texttt{experiment\_e3\_batching.csv}) sweeps $B \in \{1, 2, 4, 8
 \section{Limitations, Conclusion, and Phase-3 Plan}
 \textbf{Limitations \& Phase-3 Plan.} Our simulator models a feedforward chain with Bernoulli arrivals, static batching, and non-preemptive GPU service. In Phase~3, we will: (1)~extend sweeps in Table~\ref{tab:gpu_empirical} to summarization and code workloads, calibrating model-specific slopes $\delta$; (2)~finalize the physical \texttt{cycle\_ms} mapping; and (3)~incorporate network bounds (V4) and empirical $L_{\max}$ sampling at $Q_3$.
 
-\textbf{Conclusion \& Code Availability.} This Phase-2 report resolves both Phase-1 feedback items via an explicit systems-to-queueing latency decomposition verified to $<0.95\%$ over $10^7$ cycles, multi-model Tesla T4 GPU sweeps across four model families (\texttt{Qwen2.5-1.5B} at $4.43\%$ held-out MAPE, \texttt{Gemma-2-2B}, \texttt{Llama-3.2-1B}, \texttt{Phi-3-mini-4k}), 100 uncapped diagnostics ($KS{=}0.3965$, $r{=}0.9493$, $9.14\%$ MAPE), and E2/E3 trade-off analyses. Full code and measurement traces are publicly available at \url{https://github.com/vaibhav3000/CSA-Modelling-Simulation-Project} and \url{https://github.com/h2o-Noob/MS-Project}.
+\textbf{Conclusion \& Code Availability.} This Phase-2 report resolves both Phase-1 feedback items via an explicit systems-to-queueing latency decomposition verified to $<0.95\%$ over $10^7$ cycles, multi-model Tesla T4 GPU sweeps across four model families (\texttt{Qwen2.5-1.5B} at $4.43\%$ held-out MAPE, \texttt{Gemma-2-2B}, \texttt{Llama-3.2-1B}, \texttt{Phi-3-mini-4k}), 100 uncapped diagnostics ($KS{=}0.3965$, $r{=}0.9493$, $9.14\%$ MAPE), and E2/E3 trade-off analyses. Full code and measurement traces are publicly available at \textcolor{blue}{\url{https://github.com/vaibhav3000/CSA-Modelling-Simulation-Project}} and \textcolor{blue}{\url{https://github.com/h2o-Noob/MS-Project}}.
 
 \begin{thebibliography}{9}\setlength{\itemsep}{0.5pt}\setlength{\parskip}{0pt}\scriptsize
 \bibitem{kwon2023vllm}
